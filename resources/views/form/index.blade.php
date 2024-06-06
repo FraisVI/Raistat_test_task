@@ -11,22 +11,23 @@
 </head>
 <body>
 <div class="container">
-    <form>
+    <form action="{{ route('form.store') }}" method="post">
+        @csrf
         <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label">Имя</label>
-            <input type="text" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+            <label for="name" class="form-label">Имя</label>
+            <input type="text" name="name" class="form-control" id="name">
         </div>
         <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label">Email</label>
-            <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" id="email" aria-describedby="emailHelp">
         </div>
         <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label">Телефон</label>
-            <input type="tel" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+            <label for="phone_number" class="form-label">Телефон</label>
+            <input type="number" name="phone_number" class="form-control" id="phone_number">
         </div>
         <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label">Сумма</label>
-            <input type="number" pattern="[0-9]{1}-[0-9]{3}-[0-9]{4}" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+            <label for="sum" class="form-label">Сумма</label>
+            <input type="number" name="sum" class="form-control" id="sum">
         </div>
         <button type="submit" class="btn btn-primary">Отправить</button>
     </form>

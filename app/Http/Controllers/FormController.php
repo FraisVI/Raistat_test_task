@@ -10,4 +10,16 @@ class FormController extends Controller
     {
         return view('form.index');
     }
+
+    public function store()
+    {
+        $data = \request()->validate([
+            'name' => 'string',
+            'email' => 'email:rfc,dns',
+            'phone_number' => 'numeric',
+            'sum' => 'numeric',
+            'more_30_seconds' => 'boolean',
+        ]);
+//        return redirect()->route('form.index');
+    }
 }
