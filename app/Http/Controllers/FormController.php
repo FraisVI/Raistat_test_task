@@ -13,6 +13,7 @@ use AmoCRM\Models\CustomFieldsValues\MultitextCustomFieldValuesModel;
 use AmoCRM\Models\CustomFieldsValues\ValueCollections\MultitextCustomFieldValueCollection;
 use AmoCRM\Models\CustomFieldsValues\ValueModels\MultitextCustomFieldValueModel;
 use AmoCRM\Models\LeadModel;
+use Exception;
 use League\OAuth2\Client\Token\AccessTokenInterface;
 
 
@@ -27,7 +28,7 @@ class FormController extends Controller
     private function authorizationAmoCrm()
     {
 
-        $subdomain = 'test'; //Поддомен нужного аккаунта
+        $subdomain = 'fraisvii'; //Поддомен нужного аккаунта
         $link = 'https://' . $subdomain . '.amocrm.ru/oauth2/access_token'; //Формируем URL для запроса
 
         /** Соберем данные для запроса */
@@ -35,7 +36,7 @@ class FormController extends Controller
             "client_id" => "f7cced00-68f8-4288-9e07-6268922ae306",
             "client_secret" => "h48816gHZj9G77qVw6SwPDMPyf96BOOigOapeWHreuQMsLocLaVvxSwcyk4fgEni",
             "grant_type" => "authorization_code",
-            "code" => "'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6ImI3M2IxMzIxMTAwNDc2ZjRlZGIyNTkyNGUwOTc5MWNmYmU3MTNkNjIyNTBmYzk5MDA0MDViYzUyMTQ5NGM2MGZhZjg2YjVjOWVjOWQ0NDgyIn0.eyJhdWQiOiJmN2NjZWQwMC02OGY4LTQyODgtOWUwNy02MjY4OTIyYWUzMDYiLCJqdGkiOiJiNzNiMTMyMTEwMDQ3NmY0ZWRiMjU5MjRlMDk3OTFjZmJlNzEzZDYyMjUwZmM5OTAwNDA1YmM1MjE0OTRjNjBmYWY4NmI1YzllYzlkNDQ4MiIsImlhdCI6MTcxNzY1OTc5NSwibmJmIjoxNzE3NjU5Nzk1LCJleHAiOjE3MTk3MDU2MDAsInN1YiI6IjExMTI4MDE4IiwiZ3JhbnRfdHlwZSI6IiIsImFjY291bnRfaWQiOjMxNzg2MzgyLCJiYXNlX2RvbWFpbiI6ImFtb2NybS5ydSIsInZlcnNpb24iOjIsInNjb3BlcyI6WyJjcm0iLCJmaWxlcyIsImZpbGVzX2RlbGV0ZSIsIm5vdGlmaWNhdGlvbnMiLCJwdXNoX25vdGlmaWNhdGlvbnMiXSwiaGFzaF91dWlkIjoiMTEyMjAwZjUtOTllOC00ZDNlLTk1YjEtMTc3MjQ0MDlmMDQ2In0.pR7uOpKh-P5IMBVcVDmyNU-N3P0boA4AbWxzH7308I6dh0ivV4g7oaHMbgdLaBI341RdSXtS9JfVK-1nyvgAsXzDH0NiAA84v8JfLOV_W90yv59bzNROMHFr8hqiOLpXwFykgf7loZ9StpFjG6X8SRGQfrw4VMp9GMwgMiyICbY_gZv7qi7CgRUF2ZtaRv2Ye113ui-5X61iywvXVlxl8vpreFLfl6wd5osVL-71HCjmT1X-7IbXKG3NaWXkpdCz6sK3SyBmIPBaoKlfIrnmYLvraBkYGcwgSgkitJ2nqidSpun6KkCiqRkhcB2RRF58P2T5kT8X3Wjr5CuustD2jw'",
+            "code" => "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjM1MmZhYzBlMDI0MTJkZmUyODRiYzg3MDUzMjk1YWM3MWU2Yzg5NDQ2OWYyZGEyZmQzOTdhNTc0MGVjMWIzYjI5ZGZkMWU3MzQ1MTM5MjkzIn0.eyJhdWQiOiJmN2NjZWQwMC02OGY4LTQyODgtOWUwNy02MjY4OTIyYWUzMDYiLCJqdGkiOiIzNTJmYWMwZTAyNDEyZGZlMjg0YmM4NzA1MzI5NWFjNzFlNmM4OTQ0NjlmMmRhMmZkMzk3YTU3NDBlYzFiM2IyOWRmZDFlNzM0NTEzOTI5MyIsImlhdCI6MTcxNzc2MDg5NywibmJmIjoxNzE3NzYwODk3LCJleHAiOjE3MTk2MTkyMDAsInN1YiI6IjExMTI4MDE4IiwiZ3JhbnRfdHlwZSI6IiIsImFjY291bnRfaWQiOjMxNzg2MzgyLCJiYXNlX2RvbWFpbiI6ImFtb2NybS5ydSIsInZlcnNpb24iOjIsInNjb3BlcyI6WyJjcm0iLCJmaWxlcyIsImZpbGVzX2RlbGV0ZSIsIm5vdGlmaWNhdGlvbnMiLCJwdXNoX25vdGlmaWNhdGlvbnMiXSwiaGFzaF91dWlkIjoiZjA3OTE0YzgtNTUxZC00NzcwLTljYTktNzU3YTg2NjcwOTU0In0.OU-Kv6OBHMNp4UkdUejn_sIRjEdkxezG9IZ5zgwLapGItFal_wkJzmda0PDc0vENKAfrSohLGSUQnAdW7A4CRvKtzzb2xrLjUZJOORoAnhTzIAjGhCxjmQZ0D0IhMMRLhRZRAQdIH70x24Rp3r58pSfOnLVUUKTG-KmGD0ZuaCurzT2e34OrU8TwXsbzWrgthN6Cj5J82nnBFEpW7qpEiKWp4RL200viQLwCixM2BTZXmTHSspgmVH8TWb6CHOFsMDNL3ccQyVCDjG0hjMQagXhhp8ATCXir-FDCn4bDOoTmO1XBGbu6nJQIP1OnXVRIiEo7uVSfr_rnkv8Cgc3rIw",
             "redirect_uri" => ""
         ];
 
