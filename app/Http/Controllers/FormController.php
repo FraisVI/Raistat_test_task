@@ -45,7 +45,7 @@ class FormController extends Controller
     /**
      * @throws ValidationException
      */
-    public function send(Request $request)
+    public function send(Request $request): View
     {
         if (!$this->validate($request, [
             'sessionStartTime' => 'required|integer',
@@ -54,7 +54,7 @@ class FormController extends Controller
             'phoneNumber' => 'required|string',
             'price' => 'required|integer',
         ])) {
-            dump( 'ошибка в данных!');
+            return view('form.index', ['massage' => 'Введены не правильные данные']);
         }
 
         $userSessionTime = (int)$request->get('sessionStartTime');
@@ -123,10 +123,10 @@ class FormController extends Controller
         try {
             $apiClient->leads()->addComplex($leadsCollection);
 
-            return view('form.index', ['massage' => 1]);
+            return view('form.index', ['massage' => 'Сделка отправлена']);
         } catch (AmoCRMApiException $e) {
 
-            return view('form.index', ['massage' => 0]);
+            return view('form.index', ['massage' => 'Сделка не отправлена']);
         }
     }
 

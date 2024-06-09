@@ -1,5 +1,4 @@
 @php($sessionStartTime = time())
-@php($massage = 2)
 
 @extends('layouts.main')
 @section('content')
@@ -25,14 +24,10 @@
             <button type="submit" name="sessionStartTime" value="<?=$sessionStartTime?>" class="btn btn-primary">Отправить</button>
         </form>
     </div>
-    @if($massage == 1)
+    @isset($massage)
         <script>
-            alert('Сделка отправлена')
+            alert('<?= $massage?>');
         </script>
-    @elseif($massage == 0)
-        <script>
-            alert('Сделка не отправлена')
-        </script>
-    @endif
+    @endisset
     <script src="{{ asset( 'js/bootstrap.min.js' ) }}"></script>
 @endsection
