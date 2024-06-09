@@ -9,12 +9,12 @@ use AmoCRM\Collections\ContactsCollection;
 use AmoCRM\Collections\CustomFieldsValuesCollection;
 use AmoCRM\Exceptions\AmoCRMApiException;
 use AmoCRM\Models\ContactModel;
+use AmoCRM\Models\CustomFieldsValues\CheckboxCustomFieldValuesModel;
 use AmoCRM\Models\CustomFieldsValues\MultitextCustomFieldValuesModel;
-use AmoCRM\Models\CustomFieldsValues\TextCustomFieldValuesModel;
+use AmoCRM\Models\CustomFieldsValues\ValueCollections\CheckboxCustomFieldValueCollection;
 use AmoCRM\Models\CustomFieldsValues\ValueCollections\MultitextCustomFieldValueCollection;
-use AmoCRM\Models\CustomFieldsValues\ValueCollections\TextCustomFieldValueCollection;
+use AmoCRM\Models\CustomFieldsValues\ValueModels\CheckboxCustomFieldValueModel;
 use AmoCRM\Models\CustomFieldsValues\ValueModels\MultitextCustomFieldValueModel;
-use AmoCRM\Models\CustomFieldsValues\ValueModels\TextCustomFieldValueModel;
 use AmoCRM\Models\LeadModel;
 use AmoCRM\Exceptions\AmoCRMApiErrorResponseException;
 
@@ -69,12 +69,12 @@ EOF;
 
         $startTime = request('startTime');
         $endTime = time();
-        $more_30_second = 0;
+        $more_30_second = false;
 
         if (!empty($startTime)) {
             $timeOnPage = $endTime - $startTime;
             if ($timeOnPage >= 30) {
-                $more_30_second = 1;
+                $more_30_second = true;
             }
         }
 
@@ -87,8 +87,6 @@ EOF;
             'price' => 'price',
 
         ]);
-
-        $more_30_second = 1;
 
         $lead = new LeadModel();
         $lead->setName('Сделка N')
@@ -125,31 +123,32 @@ EOF;
 
                             )
                     )
+
+            )
+            ->setCustomFieldsValues(
+                (new CustomFieldsValuesCollection())
+                    ->add(
+                        (new CheckboxCustomFieldValuesModel())
+                            ->setFieldId(397259)
+                            ->setValues(
+                                (new CheckboxCustomFieldValueCollection())
+                                    ->add(
+                                        (new CheckboxCustomFieldValueModel())
+                                            ->setValue($more_30_second)
+                                    )
+                            )
+                    )
             );
-
-        $leadCustomFieldsValues = new CustomFieldsValuesCollection();
-        $textCustomFieldValueModel = new TextCustomFieldValuesModel();
-        $textCustomFieldValueModel->setFieldId(269303);
-        $textCustomFieldValueModel->setValues(
-            (new TextCustomFieldValueCollection())
-                ->add((new TextCustomFieldValueModel())->setValue('Текст'))
-        );
-        $leadCustomFieldsValues->add($textCustomFieldValueModel);
-
 
         $leadsCollection = new LeadsCollection();
 
         $leadsCollection->add($lead);
 
         try {
-            $addedLeadsCollection = $apiClient->leads()->addComplex($leadsCollection);
+            $apiClient->leads()->addComplex($leadsCollection);
         } catch (AmoCRMApiException $e) {
-            $this->printError($e);
+            echo "Ошибка при отправке сделки, свяжитесь с администратором";
             die;
         }
-
-        dd($addedLeadsCollection);
     }
-
-
 }
