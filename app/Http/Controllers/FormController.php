@@ -3,18 +3,20 @@
 namespace App\Http\Controllers;
 
 use AmoCRM\Client\AmoCRMApiClient;
+use AmoCRM\Client\LongLivedAccessToken;
 use AmoCRM\Collections\Leads\LeadsCollection;
 use AmoCRM\Collections\ContactsCollection;
 use AmoCRM\Collections\CustomFieldsValuesCollection;
 use AmoCRM\Exceptions\AmoCRMApiException;
-use AmoCRM\EntitiesServices\Leads;
 use AmoCRM\Models\ContactModel;
 use AmoCRM\Models\CustomFieldsValues\MultitextCustomFieldValuesModel;
+use AmoCRM\Models\CustomFieldsValues\TextCustomFieldValuesModel;
 use AmoCRM\Models\CustomFieldsValues\ValueCollections\MultitextCustomFieldValueCollection;
+use AmoCRM\Models\CustomFieldsValues\ValueCollections\TextCustomFieldValueCollection;
 use AmoCRM\Models\CustomFieldsValues\ValueModels\MultitextCustomFieldValueModel;
+use AmoCRM\Models\CustomFieldsValues\ValueModels\TextCustomFieldValueModel;
 use AmoCRM\Models\LeadModel;
-use Exception;
-use League\OAuth2\Client\Token\AccessTokenInterface;
+use AmoCRM\Exceptions\AmoCRMApiErrorResponseException;
 
 
 class FormController extends Controller
@@ -25,116 +27,128 @@ class FormController extends Controller
     }
 
 
+    function printError(AmoCRMApiException $e): void
+    {
+        $errorTitle = $e->getTitle();
+        $code = $e->getCode();
+        $debugInfo = var_export($e->getLastRequestInfo(), true);
+
+        $validationErrors = null;
+        if ($e instanceof AmoCRMApiErrorResponseException) {
+            $validationErrors = var_export($e->getValidationErrors(), true);
+        }
+
+        $error = <<<EOF
+Error: $errorTitle
+Code: $code
+Debug: $debugInfo
+EOF;
+
+        if ($validationErrors !== null) {
+            $error .= PHP_EOL . 'Validation-Errors: ' . $validationErrors . PHP_EOL;
+        }
+
+        echo '<pre>' . $error . '</pre>';
+    }
+
     private function authorizationAmoCrm()
     {
 
-        $subdomain = 'fraisvii'; //Поддомен нужного аккаунта
-        $link = 'https://' . $subdomain . '.amocrm.ru/oauth2/access_token'; //Формируем URL для запроса
+        $accessToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjQ1NWQxNDkwN2JkMWMzYjJiMDkzMWMwMDk4MzAwODcyOTI0ZDQ0MTMxYTA1ZWM2NDc1Nzg2NWM2MjhjZjcxYzcyYjU5OTJjODQ5NmU1MTE0In0.eyJhdWQiOiJmN2NjZWQwMC02OGY4LTQyODgtOWUwNy02MjY4OTIyYWUzMDYiLCJqdGkiOiI0NTVkMTQ5MDdiZDFjM2IyYjA5MzFjMDA5ODMwMDg3MjkyNGQ0NDEzMWEwNWVjNjQ3NTc4NjVjNjI4Y2Y3MWM3MmI1OTkyYzg0OTZlNTExNCIsImlhdCI6MTcxNzc3NDU0MSwibmJmIjoxNzE3Nzc0NTQxLCJleHAiOjE3MTk3OTIwMDAsInN1YiI6IjExMTI4MDE4IiwiZ3JhbnRfdHlwZSI6IiIsImFjY291bnRfaWQiOjMxNzg2MzgyLCJiYXNlX2RvbWFpbiI6ImFtb2NybS5ydSIsInZlcnNpb24iOjIsInNjb3BlcyI6WyJjcm0iLCJmaWxlcyIsImZpbGVzX2RlbGV0ZSIsIm5vdGlmaWNhdGlvbnMiLCJwdXNoX25vdGlmaWNhdGlvbnMiXSwiaGFzaF91dWlkIjoiY2NlNThmYWItMDVlZi00Zjg3LWEzY2UtMGMzZGNhYTllYWRjIn0.FG35glMF2YqZCFKHt7Ogp2JJYpESC2b3k8mmx1yhlqpWSYsCbLAQCuq5FWoirNEapyT2fENejyBJkkf3d7qdtm_Vpi6pNEofZ1NicnutC1xdm_RXFfV4FXRxrYNqXMkh8MYYTKyH1F6j7DfXSLY6eZdROpxn2f3n7mAcfyov6X0seeSGx7w1X8-Wum2tR94MHTvNBLvgfPzVOfU_Y3DdV4NBqPOYH8x39rLKdfL8OQsZJjGgWLMBj5V8YYN6Xm2Bgxjgj2py8RG7vt9f0isKYgg4RoQ6p4Ih_yZ2V94NO6U__IwC2pKODXFAMtHYlo7OiD-9r1wb3W4c359tkTamXA';
+        $apiClient = new AmoCRMApiClient();
+        $longLivedAccessToken = new LongLivedAccessToken($accessToken);
 
-        /** Соберем данные для запроса */
-        $data = [
-            "client_id" => "f7cced00-68f8-4288-9e07-6268922ae306",
-            "client_secret" => "h48816gHZj9G77qVw6SwPDMPyf96BOOigOapeWHreuQMsLocLaVvxSwcyk4fgEni",
-            "grant_type" => "authorization_code",
-            "code" => "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjM1MmZhYzBlMDI0MTJkZmUyODRiYzg3MDUzMjk1YWM3MWU2Yzg5NDQ2OWYyZGEyZmQzOTdhNTc0MGVjMWIzYjI5ZGZkMWU3MzQ1MTM5MjkzIn0.eyJhdWQiOiJmN2NjZWQwMC02OGY4LTQyODgtOWUwNy02MjY4OTIyYWUzMDYiLCJqdGkiOiIzNTJmYWMwZTAyNDEyZGZlMjg0YmM4NzA1MzI5NWFjNzFlNmM4OTQ0NjlmMmRhMmZkMzk3YTU3NDBlYzFiM2IyOWRmZDFlNzM0NTEzOTI5MyIsImlhdCI6MTcxNzc2MDg5NywibmJmIjoxNzE3NzYwODk3LCJleHAiOjE3MTk2MTkyMDAsInN1YiI6IjExMTI4MDE4IiwiZ3JhbnRfdHlwZSI6IiIsImFjY291bnRfaWQiOjMxNzg2MzgyLCJiYXNlX2RvbWFpbiI6ImFtb2NybS5ydSIsInZlcnNpb24iOjIsInNjb3BlcyI6WyJjcm0iLCJmaWxlcyIsImZpbGVzX2RlbGV0ZSIsIm5vdGlmaWNhdGlvbnMiLCJwdXNoX25vdGlmaWNhdGlvbnMiXSwiaGFzaF91dWlkIjoiZjA3OTE0YzgtNTUxZC00NzcwLTljYTktNzU3YTg2NjcwOTU0In0.OU-Kv6OBHMNp4UkdUejn_sIRjEdkxezG9IZ5zgwLapGItFal_wkJzmda0PDc0vENKAfrSohLGSUQnAdW7A4CRvKtzzb2xrLjUZJOORoAnhTzIAjGhCxjmQZ0D0IhMMRLhRZRAQdIH70x24Rp3r58pSfOnLVUUKTG-KmGD0ZuaCurzT2e34OrU8TwXsbzWrgthN6Cj5J82nnBFEpW7qpEiKWp4RL200viQLwCixM2BTZXmTHSspgmVH8TWb6CHOFsMDNL3ccQyVCDjG0hjMQagXhhp8ATCXir-FDCn4bDOoTmO1XBGbu6nJQIP1OnXVRIiEo7uVSfr_rnkv8Cgc3rIw",
-            "redirect_uri" => ""
-        ];
+        $apiClient->setAccessToken($longLivedAccessToken)
+            ->setAccountBaseDomain('fraisvii.amocrm.ru');
 
-        /**
-         * Нам необходимо инициировать запрос к серверу.
-         * Воспользуемся библиотекой cURL (поставляется в составе PHP).
-         * Вы также можете использовать и кроссплатформенную программу cURL, если вы не программируете на PHP.
-         */
-        $curl = curl_init(); //Сохраняем дескриптор сеанса cURL
-        /** Устанавливаем необходимые опции для сеанса cURL  */
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_USERAGENT, 'amoCRM-oAuth-client/1.0');
-        curl_setopt($curl, CURLOPT_URL, $link);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, ['Content-Type:application/json']);
-        curl_setopt($curl, CURLOPT_HEADER, false);
-        curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 1);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 2);
-        $out = curl_exec($curl); //Инициируем запрос к API и сохраняем ответ в переменную
-        $code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
-        /** Теперь мы можем обработать ответ, полученный от сервера. Это пример. Вы можете обработать данные своим способом. */
-        $code = (int)$code;
-        $errors = [
-            400 => 'Bad request',
-            401 => 'Unauthorized',
-            403 => 'Forbidden',
-            404 => 'Not found',
-            500 => 'Internal server error',
-            502 => 'Bad gateway',
-            503 => 'Service unavailable',
-        ];
-
-        try {
-            /** Если код ответа не успешный - возвращаем сообщение об ошибке  */
-            if ($code < 200 || $code > 204) {
-                throw new Exception(isset($errors[$code]) ? $errors[$code] : 'Undefined error', $code);
-            }
-        } catch (\Exception $e) {
-            die('Ошибка: ' . $e->getMessage() . PHP_EOL . 'Код ошибки: ' . $e->getCode());
-        }
-
-        /**
-         * Данные получаем в формате JSON, поэтому, для получения читаемых данных,
-         * нам придётся перевести ответ в формат, понятный PHP
-         */
-        $response = json_decode($out, true);
-
-        $access_token = $response['access_token']; //Access токен
-        $refresh_token = $response['refresh_token']; //Refresh токен
-        $token_type = $response['token_type']; //Тип токена
-        $expires_in = $response['expires_in']; //Через сколько действие токена истекает
-
-        echo '<pre>';
-        print_r($token_type);
-
+        return $apiClient;
     }
 
     public function store()
     {
 
+        $startTime = request('startTime');
+        $endTime = time();
+        $more_30_second = 0;
 
-        /*        {
-                    "client_id": "xxxx",
-          "client_secret": "xxxx",
-          "grant_type": "authorization_code",
-          "code": "xxxxxxx",
-          "redirect_uri": "https://test.test"
-        }*/
+        if (!empty($startTime)) {
+            $timeOnPage = $endTime - $startTime;
+            if ($timeOnPage >= 30) {
+                $more_30_second = 1;
+            }
+        }
 
-        /*        $data = \request([
-                    'name' => 'name',
-                    'email' => 'email',
-                    'phone_number' => 'phone_number',
-                    'price' => 'price',
-                ]);
-                $data['custom_fields_values'] = [
-                    'field_id' => 397259,
-                    'values' => ['value' => 'true']
-                ];
+        $apiClient = $this->authorizationAmoCrm();
 
-                $lead = new LeadModel();
-                $lead->setName('Сделка N')
-                    ->setPrice(450);
+        $data = \request([
+            'name' => 'name',
+            'email' => 'email',
+            'phone_number' => 'phone_number',
+            'price' => 'price',
 
-                $leadsService = new AmoCRMApiClient();
+        ]);
 
-                $leadsCollection = new LeadsCollection();
-                $leadsCollection->add($lead);
+        $more_30_second = 1;
 
-                try {
-                    $leadsCollection = $leadsService->add($leadsCollection);
-                } catch (AmoCRMApiException $e) {
-                    printError($e);
-                    die;
-                }*/
-        $this->authorizationAmoCrm();
+        $lead = new LeadModel();
+        $lead->setName('Сделка N')
+            ->setPrice($data['price'])
+            ->setContacts(
+                (new ContactsCollection())
+                    ->add(
+                        (new ContactModel())
+                            ->setFirstName($data['name'])
+                            ->setCustomFieldsValues(
+                                (new CustomFieldsValuesCollection())
+                                    ->add(
+                                        (new MultitextCustomFieldValuesModel())
+                                            ->setFieldCode('PHONE')
+                                            ->setValues(
+                                                (new MultitextCustomFieldValueCollection())
+                                                    ->add(
+                                                        (new MultitextCustomFieldValueModel())
+                                                            ->setValue($data['phone_number'])
+                                                    )
+                                            )
+                                    )
+                                    ->add(
+                                        (new MultitextCustomFieldValuesModel())
+                                            ->setFieldCode('EMAIL')
+                                            ->setValues(
+                                                (new MultitextCustomFieldValueCollection())
+                                                    ->add(
+                                                        (new MultitextCustomFieldValueModel())
+                                                            ->setValue($data['email'])
+                                                    )
+                                            )
+                                    )
+
+                            )
+                    )
+            );
+
+        $leadCustomFieldsValues = new CustomFieldsValuesCollection();
+        $textCustomFieldValueModel = new TextCustomFieldValuesModel();
+        $textCustomFieldValueModel->setFieldId(269303);
+        $textCustomFieldValueModel->setValues(
+            (new TextCustomFieldValueCollection())
+                ->add((new TextCustomFieldValueModel())->setValue('Текст'))
+        );
+        $leadCustomFieldsValues->add($textCustomFieldValueModel);
+
+
+        $leadsCollection = new LeadsCollection();
+
+        $leadsCollection->add($lead);
+
+        try {
+            $addedLeadsCollection = $apiClient->leads()->addComplex($leadsCollection);
+        } catch (AmoCRMApiException $e) {
+            $this->printError($e);
+            die;
+        }
+
+        dd($addedLeadsCollection);
     }
 
 
